@@ -59,6 +59,65 @@ defmodule Scry.Logic.ExecutorTest do
     end
   end
 
+  describe "wildcard-fallback ordering -- a core builtin's own name never becomes a phantom goal" do
+    test "string(Y) = ... is an ordinary cast comparison, not a wildcard relation call" do
+      # A wrongly-wildcarded `string(...)` would look up a phantom
+      # `{"string", 2}` relation `conn` has no clauses for -- this
+      # module's own documented "unknown relation simply fails
+      # silently" posture -- silently returning zero rows regardless of
+      # what `Y` actually is. The correct behavior delegates the whole
+      # comparison unchanged to `Scry.Core.QueryOps.run_flat/3`, which
+      # resolves `string(Y)` as the real (identity, for an
+      # already-string `Y`) cast it is.
+      assert run!(~s|SELECT parent(X, Y) WHERE string(Y) = "bob" { X, Y }|) == [
+               %{"X" => "tom", "Y" => "bob"}
+             ]
+    end
+
+    test "dxn($p)/dxnb($p) (added to core's own cast names after this module's own list was first hand-duplicated) are correctly recognized as core builtins too" do
+      # A malformed-DXN external param, not a bound goal variable --
+      # every fixed string `FamilyDB`'s own facts ever bind Y to
+      # ("bob", "tom", ...) turns out to be *valid* DXN (a bare
+      # identifier decodes as a `%Dextrin.Symbol{}`), so it can't tell
+      # the two cases apart on its own. The correct behavior genuinely
+      # attempts the DXN decode and raises on this malformed input; a
+      # wrongly-wildcarded `dxn(...)` would instead silently return
+      # `[]` (a phantom relation `conn` has no clauses for, this
+      # module's own documented "unknown relation simply fails
+      # silently" posture), never reaching `Scry.Core.QueryOps.
+      # cast_to_dxn/1` at all. This is exactly the real, confirmed bug
+      # found and fixed here: `dxn`/`dxnb` used to be missing from this
+      # module's own hand-duplicated `@known_call_names`.
+      assert_raise ArgumentError, ~r/dxn\(\.\.\.\) could not decode/, fn ->
+        run!(~s|SELECT parent(X, Y) WHERE dxn($p) = "z" { X, Y }|, %{"p" => "not dxn at all }{"})
+      end
+
+      assert_raise ArgumentError, ~r/dxnb\(\.\.\.\) could not decode/, fn ->
+        run!(~s|SELECT parent(X, Y) WHERE dxnb($p) = "z" { X, Y }|, %{"p" => "not dxnb at all"})
+      end
+    end
+
+    test "config :scry_logic, :extra_known_call_names excludes a further, non-core name from the wildcard fallback" do
+      # `age/2` is a *real* relation in `FamilyDB`'s own `conn`,
+      # normally resolved as a goal (the worked-example describe block
+      # above proves this). Registering it as an "extra known name"
+      # (standing in for another loaded kind's own EP2 auto-imported
+      # name, lang_spec.md §2's own resolution ordering) makes the
+      # wildcard-fallback machinery treat `age(Y)` as an ordinary,
+      # unregistered cast call instead -- `apply_cast/2` has no "age"
+      # cast, so this raises a clear, different error rather than
+      # silently resolving it as a goal, proving the config value
+      # genuinely reaches `wildcard_call?/1`.
+      Application.put_env(:scry_logic, :extra_known_call_names, ["age"])
+
+      on_exit(fn -> Application.delete_env(:scry_logic, :extra_known_call_names) end)
+
+      assert_raise ArgumentError, ~r/unknown or unsupported function: "age"/, fn ->
+        run!(~s|SELECT parent(X, Y) WHERE age(Y) > 10 { X, Y }|)
+      end
+    end
+  end
+
   describe "recursion -- a real transitive-closure predicate" do
     test "ancestor/2, defined recursively in the conn, terminates and returns every solution" do
       assert run!("SELECT ancestor(\"tom\", Y) { Y }") == [

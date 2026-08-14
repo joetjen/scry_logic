@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `Scry.Logic.Executor`'s own wildcard-relation-call fallback (lang_spec.md §2/§8.4: a bare `name(args)` inside `WHERE` is a relation call *unless* `name` is already claimed by something else) now calls the real, public `Scry.Core.QueryOps.core_builtin_call_names/0` instead of a hand-duplicated copy of core's own private `@aggregate_names ++ @cast_names` -- that copy had already drifted stale, missing `dxn`/`dxnb` (added to core's own cast list after this copy was first written): `dxn(field)`/`dxnb(field)` used inside a `logic` query's own `WHERE` was a real, confirmed bug, silently misresolved as a wildcard relation call against a phantom `{"dxn"/"dxnb", N}` relation `conn` has no clauses for (this module's own documented "unknown relation simply fails silently" posture), rather than the real cast. Also adds `config :scry_logic, :extra_known_call_names, [...]` -- lang_spec §2's own full EP2 resolution ordering is "core's own built-ins, then each *other* loaded variant's own auto-imported names, then, last, `logic`'s own wildcard fallback"; `scry_logic` has no compile-time way to enumerate a peer kind package's own names (no real dependency relationship between kind packages), so the one thing that *does* know which other kind packages a given build has loaded -- the consuming application -- can now say so explicitly, the same config-driven (not dependency-tree auto-detection) posture `Scry.Core.QueryTool`'s own backend/parser lookup already established. `test/scry/logic/executor_test.exs`.
+
 ### Added
 
 - The `logic` kind (lang_spec.md §8.4) -- Prolog/Datalog-shaped querying: `SELECT ancestor(X, "bob") WHERE age(X) > 30 { X }`, real SLD-resolution/unification via `Ichor.Backtrack`, not a row-fetch translated some other way.

@@ -120,17 +120,41 @@ defmodule Scry.Logic.Executor do
   alias Scry.Core.{Cursor, CombinedQuery, Query, QueryOps}
   alias Scry.Logic.Term
 
-  # Deliberately duplicated from `Scry.Core.QueryOps`'s own private
-  # `@aggregate_names ++ @cast_names` (not exposed publicly by that
-  # module) -- a `{:call, name, args}` found inside a `logic` query's
-  # own `WHERE` is a wildcard relation call *unless* `name` is one of
-  # these, matching lang_spec.md §2's own auto-import ordering ("core's
-  # own built-ins always win first -- a variant can never shadow a core
-  # name").
-  @known_call_names ~w(
-    sum avg count min max stddev_samp stddev_pop var_samp var_pop percentile rate
-    string int exact inexact json
-  )
+  # A `{:call, name, args}` found inside a `logic` query's own `WHERE`
+  # is a wildcard relation call *unless* `name` is already claimed by
+  # something else -- lang_spec.md §2's own EP2 auto-import ordering:
+  # core's own built-ins always win first, then each *other* loaded
+  # variant's own auto-imported names, and only then, last, `logic`'s
+  # own wildcard fallback. This used to be a hand-duplicated copy of
+  # `Scry.Core.QueryOps`'s own private `@aggregate_names ++
+  # @cast_names` -- found stale the hard way (missing `dxn`/`dxnb`,
+  # added to that list after this copy was written) -- now calls the
+  # real, now-public `Scry.Core.QueryOps.core_builtin_call_names/0`
+  # directly instead, so it can never drift out of sync with core
+  # again. The "other loaded variants" half of the ordering has no
+  # compile-time answer *at all* here -- `scry_logic` has no reason to
+  # depend on `scry_search`/`scry_graph`/`scry_time_series`/
+  # `scry_document` (peer kind packages, not a real dependency
+  # relationship), so it has no way to enumerate their own EP2 names on
+  # its own, the identical "which kind libraries are loaded is a
+  # build-time, not runtime, *discoverable* property" constraint
+  # `Scry.Core.QueryTool`'s own config-driven backend/parser lookup
+  # already navigates around -- `config :scry_logic,
+  # :extra_known_call_names, [...]` lets the one thing that *does* know
+  # (the consuming application, which chose which kind packages to
+  # load) supply any further names to exclude from the wildcard
+  # fallback, the same "config-driven, not dependency-tree
+  # auto-detection" posture already established there. A plain runtime
+  # `Application.get_env/3` lookup, not a compile-time module
+  # attribute, since a guard clause can only ever see a value baked in
+  # at *this module's own* compile time, and the whole point is letting
+  # a downstream app's config decide this, however/whenever it sets it.
+  defp known_call_names,
+    do:
+      QueryOps.core_builtin_call_names() ++
+        Application.get_env(:scry_logic, :extra_known_call_names, [])
+
+  defp wildcard_call?(name), do: name not in known_call_names()
 
   @doc """
   Runs `query_or_combined` against `conn`, wrapping the result in a
@@ -240,8 +264,8 @@ defmodule Scry.Logic.Executor do
 
   # Walks `wheres` (an AND-ed list of predicates, each possibly nested
   # `{:and, ...}`/`{:or, ...}`/`{:not, ...}`), finding every `{:cmp, op,
-  # lhs, rhs}` where one side is a wildcard call (`name` not in
-  # `@known_call_names`). Each one becomes a *conjoined goal*, args
+  # lhs, rhs}` where one side is a wildcard call (`wildcard_call?/1`
+  # says so). Each one becomes a *conjoined goal*, args
   # arity-plus-one'd with a fresh output variable (`"$goal_out_N"`) when
   # the call is being compared (a value position) rather than a bare
   # goal on its own; the comparison itself is rewritten in place to
@@ -280,9 +304,12 @@ defmodule Scry.Logic.Executor do
     end
   end
 
-  defp rewrite_predicate({:cmp, op, {:call, name, args}, rhs}, conn, params, counter)
-       when name not in @known_call_names do
-    rewrite_call_comparison(op, name, args, rhs, conn, params, counter)
+  defp rewrite_predicate({:cmp, op, {:call, name, args}, rhs} = predicate, conn, params, counter) do
+    if wildcard_call?(name) do
+      rewrite_call_comparison(op, name, args, rhs, conn, params, counter)
+    else
+      {:ok, predicate, [], [], counter}
+    end
   end
 
   defp rewrite_predicate(predicate, _conn, _params, counter),
