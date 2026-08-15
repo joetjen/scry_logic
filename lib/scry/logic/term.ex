@@ -14,7 +14,7 @@ defmodule Scry.Logic.Term do
   own clause functions for `{name, arity}` and calling each one
   directly with the (already-resolved) argument list, exactly
   `Ichor`'s own `Prolog.DB.solve_any/2` worked example does. Scry has no
-  rule-authoring syntax (lang_spec.md §8.4) -- it never needs to
+  rule-authoring syntax -- it never needs to
   represent or unify a *nested* compound structure, only ever a flat
   argument list per goal, which is what makes this simplification safe:
   nothing in `scry_logic` ever needs `compound?/1` to be `true`.
@@ -24,7 +24,7 @@ defmodule Scry.Logic.Term do
   way `Prolog.Terms` uses for a *clause's own internal* variables. This
   is deliberate, not a simplification that loses anything: a Scry
   query's own top-level variables are named, source-text identifiers,
-  stable for exactly one execution (lang_spec.md §8.4: "repeated names
+  stable for exactly one execution ("repeated names
   within a query unify"), never re-instantiated mid-query the way a
   recursive clause's own internal variables must be -- freshening a
   *clause's* own internal variables (so two different calls to the same

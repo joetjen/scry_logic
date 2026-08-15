@@ -1,6 +1,6 @@
 defmodule Scry.Logic.Executor do
   @moduledoc """
-  `Scry.Core.EngineBehaviour` for lang_spec.md §8.4's `logic` variant --
+  `Scry.Core.EngineBehaviour` for the `logic` variant --
   real SLD-resolution/unification (`Ichor.Backtrack`), not a row-fetch
   translated some other way. `SELECT ancestor(X, "bob") WHERE age(X) >
   30 { X }` becomes: build a goal from the call-shaped source
@@ -15,7 +15,7 @@ defmodule Scry.Logic.Executor do
   source rows, delegate everything else" shape `scry_search`/
   `scry_document`/`scry_graph` already established.
 
-  **Facts and rules live entirely in `conn`** (lang_spec.md §8.4 -- Scry
+  **Facts and rules live entirely in `conn`** (Scry
   has no rule-authoring syntax): `conn` is a plain map, `%{{name,
   arity} => [clause_fun]}`, one entry per relation `conn` knows how to
   answer -- each `clause_fun` is `[term()] -> Ichor.Backtrack.goal()`,
@@ -122,7 +122,7 @@ defmodule Scry.Logic.Executor do
 
   # A `{:call, name, args}` found inside a `logic` query's own `WHERE`
   # is a wildcard relation call *unless* `name` is already claimed by
-  # something else -- lang_spec.md §2's own EP2 auto-import ordering:
+  # something else -- following EP2 auto-import ordering:
   # core's own built-ins always win first, then each *other* loaded
   # variant's own auto-imported names, and only then, last, `logic`'s
   # own wildcard fallback. This used to be a hand-duplicated copy of

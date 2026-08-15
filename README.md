@@ -1,7 +1,6 @@
 # Scry.Logic
 
-The `logic` kind for [Scry](https://github.com/joetjen/scry) (lang_spec.md §8.4) --
-Prolog/Datalog-shaped querying:
+The `logic` kind for Scry -- Prolog/Datalog-shaped querying:
 
 ```
 SELECT ancestor(X, "bob") WHERE age(X) > 30 { X }

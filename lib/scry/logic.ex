@@ -1,7 +1,6 @@
 defmodule Scry.Logic do
   @moduledoc """
-  The `logic` kind for [Scry](https://github.com/joetjen/scry)
-  (lang_spec.md §8.4) -- Prolog/Datalog-shaped querying: `SELECT
+  The `logic` kind for Scry -- Prolog/Datalog-shaped querying: `SELECT
   ancestor(X, "bob") WHERE age(X) > 30 { X }`. Facts and rules live
   entirely in a backend `conn`; Scry itself has no rule-authoring
   syntax and never parses or reasons about a rule body.
@@ -16,8 +15,7 @@ defmodule Scry.Logic do
   that struct's own moduledoc) -- deliberately not gated to `logic` at
   the grammar level, since grammar composition only ever answers
   whether a construct *exists*, not whether it's *legal* against a
-  given source (lang_spec.md §2's own closing paragraph); `Scry.Core.
-  TypeCheck`'s category check is what enforces that a non-nil
+  given source; `Scry.Core.TypeCheck`'s category check is what enforces that a non-nil
   `goal_args` only appears against a `TYPE`-declared `"logic"` kind.
 
   This means `parse/1` below is a direct, permanent delegation to

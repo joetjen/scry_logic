@@ -52,8 +52,8 @@ defmodule Scry.Logic.MixProject do
       # scry_core isn't published to Hex yet. Real, unscoped -- Scry.
       # Logic.parse/1 calls Scry.Core.parse/1 at runtime, and Scry.
       # Logic.Executor implements Scry.Core.EngineBehaviour directly.
-      # No grammar fragment of its own to compose -- lang_spec.md
-      # §8.4's `SELECT <name>(<args>) { ... }` call-shaped source
+      # No grammar fragment of its own to compose -- the
+      # `SELECT <name>(<args>) { ... }` call-shaped source
       # (`goal_args`) is a plain scry_core grammar addition now, not an
       # EP1/EP2 extension point this package fills (Scry.Core.Query's
       # own moduledoc has the full reasoning), so scry_logic is a
@@ -107,7 +107,7 @@ defmodule Scry.Logic.MixProject do
   end
 
   defp description do
-    "The logic kind for Scry (lang_spec.md §8.4) -- Prolog/Datalog-shaped querying, a " <>
+    "The logic kind for Scry -- Prolog/Datalog-shaped querying, a " <>
       "call-shaped source resolved via real SLD-resolution/unification (Ichor.Backtrack) " <>
       "against clauses a backend conn supplies; Scry has no rule-authoring syntax of its own."
   end

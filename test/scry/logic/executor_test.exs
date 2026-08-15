@@ -41,7 +41,7 @@ defmodule Scry.Logic.ExecutorTest do
     end
   end
 
-  describe "the lang_spec.md §8.4 worked example -- a WHERE-embedded goal call" do
+  describe "the worked example -- a WHERE-embedded goal call" do
     test "age(X) > 30 conjoins a second goal and filters by its own resolved value" do
       assert run!("SELECT parent(X, Y) WHERE age(Y) > 10 { X, Y }") == [
                %{"X" => "tom", "Y" => "bob"}
@@ -102,7 +102,7 @@ defmodule Scry.Logic.ExecutorTest do
       # normally resolved as a goal (the worked-example describe block
       # above proves this). Registering it as an "extra known name"
       # (standing in for another loaded kind's own EP2 auto-imported
-      # name, lang_spec.md §2's own resolution ordering) makes the
+      # name, per the resolution ordering) makes the
       # wildcard-fallback machinery treat `age(Y)` as an ordinary,
       # unregistered cast call instead -- `apply_cast/2` has no "age"
       # cast, so this raises a clear, different error rather than
